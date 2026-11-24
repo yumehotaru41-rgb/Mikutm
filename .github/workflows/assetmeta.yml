@@ -1,0 +1,32 @@
+name: Meta del fondo
+on:
+  push:
+    paths:
+      - ".github/workflows/assetmeta.yml"
+permissions:
+  contents: write
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Calcula sha256 y bytes de assets/background.png
+        run: |
+          if [ ! -f assets/background.png ]; then
+            echo "No existe assets/background.png; salgo."
+            exit 0
+          fi
+          SIZE=$(wc -c < assets/background.png)
+          SHA=$(sha256sum assets/background.png | cut -d' ' -f1)
+          echo "background.png: $SIZE bytes, sha256=$SHA"
+          printf '{\n  "file": "assets/background.png",\n  "bytes": %s,\n  "sha256": "%s"\n}\n' "$SIZE" "$SHA" > .assetmeta.json
+          git config user.name "yumehotaru41-rgb"
+          git config user.email "yumehotaru41@gmail.com"
+          git add .assetmeta.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios."
+          else
+            git commit -m "meta: sha256 y bytes del fondo del tema"
+            git push
+          fi

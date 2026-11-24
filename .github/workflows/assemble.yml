@@ -1,0 +1,44 @@
+name: Ensambla el fondo del tema
+on:
+  push:
+    paths:
+      - "chunks/**"
+      - ".assetmeta.json"
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Ensambla assets/background.jpg desde chunks
+        run: |
+          for i in 01 02 03 04 05 06; do
+            if [ ! -f "chunks/$i" ]; then
+              echo "Falta chunks/$i; no ensamblo todavia."
+              exit 0
+            fi
+          done
+          mkdir -p assets
+          cat chunks/01 chunks/02 chunks/03 chunks/04 chunks/05 chunks/06 > /tmp/all.b64
+          LEN=$(wc -c < /tmp/all.b64)
+          echo "Base64: $LEN caracteres (esperado 46224)"
+          if [ "$LEN" != "46224" ]; then
+            echo "Tamano inesperado; no ensamblo."
+            exit 0
+          fi
+          base64 -d /tmp/all.b64 > assets/background.jpg
+          SIZE=$(wc -c < assets/background.jpg)
+          SHA=$(sha256sum assets/background.jpg | cut -d' ' -f1)
+          echo "background.jpg: $SIZE bytes, sha256=$SHA"
+          printf '{\n  "file": "assets/background.jpg",\n  "bytes": %s,\n  "sha256": "%s"\n}\n' "$SIZE" "$SHA" > .assetmeta.json
+          git config user.name "yumehotaru41-rgb"
+          git config user.email "yumehotaru41@gmail.com"
+          git add assets/background.jpg .assetmeta.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios."
+          else
+            git commit -m "assets: ensambla background.jpg (34668 bytes)"
+            git push
+          fi
